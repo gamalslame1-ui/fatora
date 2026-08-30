@@ -191,7 +191,9 @@ def client_detail(id):
     client = Client.query.get_or_404(id)
     return render_template('client_detail.html', client=client)
 
+with app.app_context():
+    db.create_all()
+
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     app.run(debug=True, host='0.0.0.0', port=5000)
+
