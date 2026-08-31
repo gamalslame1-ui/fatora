@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}الرئيسية - فاتورة{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white rounded-xl shadow-md p-6 border-r-4 border-indigo-500">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">إجمالي الفواتير</p>
+                <p class="text-3xl font-bold text-indigo-600">{{ stats.total_invoices }}</p>
+            </div>
+            <div class="bg-indigo-100 p-3 rounded-full">
+                <i class="fas fa-file-invoice text-indigo-600 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-md p-6 border-r-4 border-green-500">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">المدفوعة</p>
+                <p class="text-3xl font-bold text-green-600">{{ stats.paid }}</p>
+            </div>
+            <div class="bg-green-100 p-3 rounded-full">
+                <i class="fas fa-check-circle text-green-600 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-md p-6 border-r-4 border-yellow-500">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">المستحقة</p>
+                <p class="text-3xl font-bold text-yellow-600">{{ stats.unpaid }}</p>
+            </div>
+            <div class="bg-yellow-100 p-3 rounded-full">
+                <i class="fas fa-clock text-yellow-600 text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-md p-6 border-r-4 border-blue-500">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">إجمالي الإيرادات</p>
+                <p class="text-3xl font-bold text-blue-600">{{ "%.2f"|format(stats.total_revenue) }} $</p>
+            </div>
+            <div class="bg-blue-100 p-3 rounded-full">
+                <i class="fas fa-dollar-sign text-blue-600 text-xl"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Invoices Table -->
+<div class="bg-white rounded-xl shadow-md overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <h2 class="text-xl font-bold text-gray-800">
+            <i class="fas fa-list ml-2 text-indigo-600"></i>قائمة الفواتير
+        </h2>
+        <a href="{{ url_for('new_invoice') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+            <i class="fas fa-plus ml-1"></i>جديد
+        </a>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">رقم الفاتورة</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">العميل</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التاريخ</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الاستحقاق</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المبلغ</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">إجراءات</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for invoice in invoices %}
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{{ invoice.invoice_number }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-gray-700">{{ invoice.client.name }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ invoice.issue_date.strftime('%Y-%m-%d') }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else '-' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap font-bold text-gray-900">{{ "%.2f"|format(invoice.total) }} $</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if invoice.status == 'paid' %}
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                <i class="fas fa-check ml-1"></i>مدفوعة
+                            </span>
+                        {% elif invoice.status == 'unpaid' %}
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                <i class="fas fa-clock ml-1"></i>مستحقة
+                            </span>
+                        {% else %}
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                <i class="fas fa-exclamation ml-1"></i>متأخرة
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <a href="{{ url_for('view_invoice', id=invoice.id) }}" class="text-indigo-600 hover:text-indigo-900 ml-3" title="عرض">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="{{ url_for('edit_invoice', id=invoice.id) }}" class="text-yellow-600 hover:text-yellow-900 ml-3" title="تعديل">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form action="{{ url_for('delete_invoice', id=invoice.id) }}" method="POST" class="inline" onsubmit="return confirm('هل أنت متأكد من الحذف؟');">
+                            <button type="submit" class="text-red-600 hover:text-red-900" title="حذف">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                        <i class="fas fa-inbox text-4xl mb-3 text-gray-300"></i>
+                        <p>لا توجد فواتير بعد</p>
+                        <a href="{{ url_for('new_invoice') }}" class="text-indigo-600 hover:underline mt-2 inline-block">أنشئ فاتورتك الأولى</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

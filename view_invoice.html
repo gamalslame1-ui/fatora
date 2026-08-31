@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}فاتورة {{ invoice.invoice_number }} - فاتورة{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Action Buttons -->
+    <div class="flex justify-between items-center mb-6 no-print">
+        <div class="flex space-x-3 space-x-reverse">
+            <a href="{{ url_for('index') }}" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+                <i class="fas fa-arrow-right ml-1"></i>رجوع
+            </a>
+            <a href="{{ url_for('edit_invoice', id=invoice.id) }}" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition">
+                <i class="fas fa-edit ml-1"></i>تعديل
+            </a>
+        </div>
+        <div class="flex space-x-3 space-x-reverse">
+            <form action="{{ url_for('update_status', id=invoice.id) }}" method="POST" class="inline">
+                <select name="status" onchange="this.form.submit()" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    <option value="unpaid" {% if invoice.status == 'unpaid' %}selected{% endif %}>مستحقة</option>
+                    <option value="paid" {% if invoice.status == 'paid' %}selected{% endif %}>مدفوعة</option>
+                    <option value="overdue" {% if invoice.status == 'overdue' %}selected{% endif %}>متأخرة</option>
+                </select>
+            </form>
+            <button onclick="window.print()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                <i class="fas fa-print ml-1"></i>طباعة / PDF
+            </button>
+            <form action="{{ url_for('delete_invoice', id=invoice.id) }}" method="POST" class="inline" onsubmit="return confirm('هل أنت متأكد من حذف هذه الفاتورة؟');">
+                <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
+                    <i class="fas fa-trash ml-1"></i>حذف
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Invoice Card -->
+    <div class="bg-white rounded-xl shadow-lg p-8" id="invoicePrint">
+        <!-- Header -->
+        <div class="flex justify-between items-start mb-8 border-b pb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-indigo-600 mb-2">فاتورة</h1>
+                <p class="text-gray-500">رقم: {{ invoice.invoice_number }}</p>
+            </div>
+            <div class="text-left">
+                <div class="bg-indigo-600 text-white px-4 py-2 rounded-lg inline-block">
+                    {% if invoice.status == 'paid' %}
+                        <i class="fas fa-check-circle ml-1"></i>مدفوعة
+                    {% elif invoice.status == 'unpaid' %}
+                        <i class="fas fa-clock ml-1"></i>مستحقة
+                    {% else %}
+                        <i class="fas fa-exclamation-circle ml-1"></i>متأخرة
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Company & Client Info -->
+        <div class="grid grid-cols-2 gap-8 mb-8">
+            <div>
+                <h3 class="font-bold text-gray-800 mb-2 border-b pb-1">من:</h3>
+                <p class="font-bold text-lg">شركتك / اسمك</p>
+                <p class="text-gray-600">بريدك الإلكتروني</p>
+                <p class="text-gray-600">رقم هاتفك</p>
+                <p class="text-gray-600">عنوانك</p>
+            </div>
+            <div>
+                <h3 class="font-bold text-gray-800 mb-2 border-b pb-1">إلى:</h3>
+                <p class="font-bold text-lg">{{ invoice.client.name }}</p>
+                {% if invoice.client.email %}<p class="text-gray-600">{{ invoice.client.email }}</p>{% endif %}
+                {% if invoice.client.phone %}<p class="text-gray-600">{{ invoice.client.phone }}</p>{% endif %}
+                {% if invoice.client.address %}<p class="text-gray-600">{{ invoice.client.address }}</p>{% endif %}
+            </div>
+        </div>
+
+        <!-- Dates -->
+        <div class="grid grid-cols-2 gap-8 mb-8 bg-gray-50 p-4 rounded-lg">
+            <div>
+                <span class="text-gray-500 text-sm">تاريخ الإصدار:</span>
+                <span class="font-bold mr-2">{{ invoice.issue_date.strftime('%Y-%m-%d') }}</span>
+            </div>
+            <div>
+                <span class="text-gray-500 text-sm">تاريخ الاستحقاق:</span>
+                <span class="font-bold mr-2">{{ invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else 'غير محدد' }}</span>
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <table class="w-full mb-8">
+            <thead>
+                <tr class="bg-gray-100">
+                    <th class="px-4 py-3 text-right">#</th>
+                    <th class="px-4 py-3 text-right">الوصف</th>
+                    <th class="px-4 py-3 text-center">الكمية</th>
+                    <th class="px-4 py-3 text-center">السعر</th>
+                    <th class="px-4 py-3 text-left">المجموع</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in invoice.items %}
+                <tr class="border-b">
+                    <td class="px-4 py-3">{{ loop.index }}</td>
+                    <td class="px-4 py-3">{{ item.description }}</td>
+                    <td class="px-4 py-3 text-center">{{ item.quantity }}</td>
+                    <td class="px-4 py-3 text-center">{{ "%.2f"|format(item.unit_price) }} $</td>
+                    <td class="px-4 py-3 text-left font-bold">{{ "%.2f"|format(item.total) }} $</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Totals -->
+        <div class="flex justify-end mb-8">
+            <div class="w-1/2 md:w-1/3">
+                <div class="flex justify-between py-2 border-b">
+                    <span class="text-gray-600">المجموع الفرعي:</span>
+                    <span class="font-bold">{{ "%.2f"|format(invoice.subtotal) }} $</span>
+                </div>
+                {% if invoice.tax_rate > 0 %}
+                <div class="flex justify-between py-2 border-b">
+                    <span class="text-gray-600">الضريبة ({{ invoice.tax_rate }}%):</span>
+                    <span class="font-bold">{{ "%.2f"|format(invoice.tax_amount) }} $</span>
+                </div>
+                {% endif %}
+                <div class="flex justify-between py-3 bg-indigo-50 px-4 rounded-lg mt-2">
+                    <span class="text-indigo-800 font-bold text-lg">الإجمالي:</span>
+                    <span class="text-indigo-800 font-bold text-xl">{{ "%.2f"|format(invoice.total) }} $</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        {% if invoice.notes %}
+        <div class="bg-yellow-50 p-4 rounded-lg mb-8">
+            <h4 class="font-bold text-yellow-800 mb-2">ملاحظات:</h4>
+            <p class="text-yellow-700">{{ invoice.notes }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Footer -->
+        <div class="text-center text-gray-400 text-sm border-t pt-4 mt-8">
+            <p>شكراً لتعاملكم معنا!</p>
+            <p class="mt-1">تم إنشاء هذه الفاتورة باستخدام فاتورة</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

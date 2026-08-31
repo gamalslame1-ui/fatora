@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}العملاء - فاتورة{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow-md overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-xl font-bold text-gray-800">
+            <i class="fas fa-users ml-2 text-indigo-600"></i>قائمة العملاء
+        </h2>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الاسم</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">البريد الإلكتروني</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الهاتف</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">عدد الفواتير</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">إجراءات</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for client in clients %}
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{{ client.name }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ client.email or '-' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ client.phone or '-' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">{{ client.invoices|length }}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <a href="{{ url_for('client_detail', id=client.id) }}" class="text-indigo-600 hover:text-indigo-900">
+                            <i class="fas fa-eye ml-1"></i>عرض
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                        <i class="fas fa-users text-4xl mb-3 text-gray-300"></i>
+                        <p>لا يوجد عملاء بعد</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

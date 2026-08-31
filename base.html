@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}فاتورة - منشئ الفواتير{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+        .print-only { display: none; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white !important; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navbar -->
+    <nav class="bg-indigo-600 text-white shadow-lg no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <a href="{{ url_for('index') }}" class="text-2xl font-bold">
+                        <i class="fas fa-file-invoice ml-2"></i>فاتورة
+                    </a>
+                </div>
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <a href="{{ url_for('index') }}" class="hover:bg-indigo-700 px-3 py-2 rounded-lg transition">
+                        <i class="fas fa-home ml-1"></i>الرئيسية
+                    </a>
+                    <a href="{{ url_for('new_invoice') }}" class="bg-white text-indigo-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100 transition">
+                        <i class="fas fa-plus ml-1"></i>فاتورة جديدة
+                    </a>
+                    <a href="{{ url_for('clients') }}" class="hover:bg-indigo-700 px-3 py-2 rounded-lg transition">
+                        <i class="fas fa-users ml-1"></i>العملاء
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="max-w-7xl mx-auto px-4 mt-4 no-print">
+                {% for category, message in messages %}
+                    <div class="bg-{{ 'green' if category == 'success' else 'red' }}-100 border-r-4 border-{{ 'green' if category == 'success' else 'red' }}-500 text-{{ 'green' if category == 'success' else 'red' }}-700 p-4 rounded-lg">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white mt-12 py-6 no-print">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p>فاتورة - منشئ الفواتير للمستقلين © 2024</p>
+        </div>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

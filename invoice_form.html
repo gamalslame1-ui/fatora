@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}{% if invoice %}تعديل فاتورة{% else %}فاتورة جديدة{% endif %} - فاتورة{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-md p-8">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">
+            <i class="fas fa-file-invoice ml-2 text-indigo-600"></i>
+            {% if invoice %}تعديل فاتورة {{ invoice.invoice_number }}{% else %}فاتورة جديدة{% endif %}
+        </h1>
+
+        <form method="POST" id="invoiceForm">
+            <!-- Invoice Number -->
+            <div class="mb-6">
+                <label class="block text-gray-700 font-bold mb-2">رقم الفاتورة</label>
+                <input type="text" name="invoice_number" value="{{ invoice.invoice_number if invoice else next_number }}" 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" required>
+            </div>
+
+            <!-- Client Section -->
+            <div class="mb-6">
+                <label class="block text-gray-700 font-bold mb-2">العميل</label>
+                <select name="client_id" id="clientSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" onchange="toggleNewClient()">
+                    <option value="">-- اختر عميل --</option>
+                    {% for client in clients %}
+                    <option value="{{ client.id }}" {% if invoice and invoice.client_id == client.id %}selected{% endif %}>{{ client.name }}</option>
+                    {% endfor %}
+                    <option value="new">+ عميل جديد</option>
+                </select>
+            </div>
+
+            <!-- New Client Form -->
+            <div id="newClientForm" class="bg-gray-50 p-4 rounded-lg mb-6 {% if not invoice or invoice.client_id != 0 %}hidden{% endif %}">
+                <h3 class="font-bold text-gray-700 mb-3">بيانات العميل الجديد</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-600 text-sm mb-1">الاسم *</label>
+                        <input type="text" name="client_name" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 text-sm mb-1">البريد الإلكتروني</label>
+                        <input type="email" name="client_email" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 text-sm mb-1">الهاتف</label>
+                        <input type="text" name="client_phone" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 text-sm mb-1">العنوان</label>
+                        <input type="text" name="client_address" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dates -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block text-gray-700 font-bold mb-2">تاريخ الإصدار</label>
+                    <input type="date" name="issue_date" value="{{ invoice.issue_date.strftime('%Y-%m-%d') if invoice else '' }}" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-bold mb-2">تاريخ الاستحقاق</label>
+                    <input type="date" name="due_date" value="{{ invoice.due_date.strftime('%Y-%m-%d') if invoice and invoice.due_date else '' }}" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                </div>
+            </div>
+
+            <!-- Items -->
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-3">
+                    <label class="block text-gray-700 font-bold">بنود الفاتورة</label>
+                    <button type="button" onclick="addItem()" class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700 transition">
+                        <i class="fas fa-plus ml-1"></i>إضافة بند
+                    </button>
+                </div>
+
+                <div id="itemsContainer" class="space-y-3">
+                    {% if invoice %}
+                        {% for item in invoice.items %}
+                        <div class="item-row grid grid-cols-12 gap-3 items-end">
+                            <div class="col-span-5">
+                                <input type="text" name="item_description[]" value="{{ item.description }}" placeholder="وصف الخدمة/المنتج" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                            </div>
+                            <div class="col-span-2">
+                                <input type="number" name="item_quantity[]" value="{{ item.quantity }}" placeholder="الكمية" step="0.01" min="0"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg item-qty" onchange="calculateTotals()" required>
+                            </div>
+                            <div class="col-span-2">
+                                <input type="number" name="item_price[]" value="{{ item.unit_price }}" placeholder="السعر" step="0.01" min="0"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg item-price" onchange="calculateTotals()" required>
+                            </div>
+                            <div class="col-span-2">
+                                <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 item-total" readonly value="{{ "%.2f"|format(item.total) }}">
+                            </div>
+                            <div class="col-span-1">
+                                <button type="button" onclick="removeItem(this)" class="text-red-600 hover:text-red-800">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="item-row grid grid-cols-12 gap-3 items-end">
+                            <div class="col-span-5">
+                                <input type="text" name="item_description[]" placeholder="وصف الخدمة/المنتج" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                            </div>
+                            <div class="col-span-2">
+                                <input type="number" name="item_quantity[]" value="1" placeholder="الكمية" step="0.01" min="0"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg item-qty" onchange="calculateTotals()" required>
+                            </div>
+                            <div class="col-span-2">
+                                <input type="number" name="item_price[]" placeholder="السعر" step="0.01" min="0"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg item-price" onchange="calculateTotals()" required>
+                            </div>
+                            <div class="col-span-2">
+                                <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 item-total" readonly value="0.00">
+                            </div>
+                            <div class="col-span-1">
+                                <button type="button" onclick="removeItem(this)" class="text-red-600 hover:text-red-800">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Tax -->
+            <div class="mb-6">
+                <label class="block text-gray-700 font-bold mb-2">نسبة الضريبة (%)</label>
+                <input type="number" name="tax_rate" id="taxRate" value="{{ invoice.tax_rate if invoice else 0 }}" step="0.01" min="0"
+                       class="w-full md:w-1/4 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" onchange="calculateTotals()">
+            </div>
+
+            <!-- Totals -->
+            <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-gray-600">المجموع الفرعي:</span>
+                    <span class="font-bold text-xl" id="subtotalDisplay">0.00 $</span>
+                </div>
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-gray-600">الضريبة:</span>
+                    <span class="font-bold text-xl" id="taxDisplay">0.00 $</span>
+                </div>
+                <div class="flex justify-between items-center border-t pt-2">
+                    <span class="text-gray-800 font-bold text-lg">الإجمالي:</span>
+                    <span class="font-bold text-2xl text-indigo-600" id="totalDisplay">0.00 $</span>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="mb-6">
+                <label class="block text-gray-700 font-bold mb-2">ملاحظات</label>
+                <textarea name="notes" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">{{ invoice.notes if invoice else '' }}</textarea>
+            </div>
+
+            <!-- Submit -->
+            <div class="flex justify-end space-x-3 space-x-reverse">
+                <a href="{{ url_for('index') }}" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                    إلغاء
+                </a>
+                <button type="submit" class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-bold">
+                    <i class="fas fa-save ml-1"></i>حفظ الفاتورة
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleNewClient() {
+    const select = document.getElementById('clientSelect');
+    const form = document.getElementById('newClientForm');
+    if (select.value === 'new') {
+        form.classList.remove('hidden');
+        form.querySelector('input[name="client_name"]').setAttribute('required', 'required');
+    } else {
+        form.classList.add('hidden');
+        form.querySelector('input[name="client_name"]').removeAttribute('required');
+    }
+}
+
+function addItem() {
+    const container = document.getElementById('itemsContainer');
+    const row = document.createElement('div');
+    row.className = 'item-row grid grid-cols-12 gap-3 items-end';
+    row.innerHTML = `
+        <div class="col-span-5">
+            <input type="text" name="item_description[]" placeholder="وصف الخدمة/المنتج" 
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+        </div>
+        <div class="col-span-2">
+            <input type="number" name="item_quantity[]" value="1" placeholder="الكمية" step="0.01" min="0"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg item-qty" onchange="calculateTotals()" required>
+        </div>
+        <div class="col-span-2">
+            <input type="number" name="item_price[]" placeholder="السعر" step="0.01" min="0"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg item-price" onchange="calculateTotals()" required>
+        </div>
+        <div class="col-span-2">
+            <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 item-total" readonly value="0.00">
+        </div>
+        <div class="col-span-1">
+            <button type="button" onclick="removeItem(this)" class="text-red-600 hover:text-red-800">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(row);
+}
+
+function removeItem(btn) {
+    const rows = document.querySelectorAll('.item-row');
+    if (rows.length > 1) {
+        btn.closest('.item-row').remove();
+        calculateTotals();
+    } else {
+        alert('يجب أن تحتوي الفاتورة على بند واحد على الأقل');
+    }
+}
+
+function calculateTotals() {
+    let subtotal = 0;
+    const rows = document.querySelectorAll('.item-row');
+
+    rows.forEach(row => {
+        const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+        const price = parseFloat(row.querySelector('.item-price').value) || 0;
+        const total = qty * price;
+        row.querySelector('.item-total').value = total.toFixed(2);
+        subtotal += total;
+    });
+
+    const taxRate = parseFloat(document.getElementById('taxRate').value) || 0;
+    const taxAmount = subtotal * (taxRate / 100);
+    const total = subtotal + taxAmount;
+
+    document.getElementById('subtotalDisplay').textContent = subtotal.toFixed(2) + ' $';
+    document.getElementById('taxDisplay').textContent = taxAmount.toFixed(2) + ' $';
+    document.getElementById('totalDisplay').textContent = total.toFixed(2) + ' $';
+}
+
+// Calculate on load
+calculateTotals();
+</script>
+{% endblock %}
